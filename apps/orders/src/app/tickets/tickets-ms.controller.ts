@@ -38,10 +38,10 @@ export class TicketsMSController {
   ) {}
 
   @ApiExcludeEndpoint()
-  @MessagePattern(Patterns.TicketCreated, Transport.RMQ)
+  @MessagePattern(Patterns.TicketApproved, Transport.RMQ)
   async onCreated(
     @Payload(new ValidationPipe(validationPipeOptions))
-    data: EventsMap[Patterns.TicketCreated],
+    data: EventsMap[Patterns.TicketApproved],
     @Ctx() context: RmqContext,
   ): Promise<TicketDto> {
     const channel = context.getChannelRef() as Channel;

@@ -1,0 +1,71 @@
+{
+  "name": "moderation",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/moderation/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/webpack:webpack",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/moderation",
+        "outputFileName": "main.mjs",
+        "main": "apps/moderation/src/main.ts",
+        "tsConfig": "apps/moderation/tsconfig.app.json",
+        "assets": ["apps/moderation/src/assets"],
+        "generatePackageJson": true,
+        "target": "node",
+        "compiler": "tsc",
+        "webpackConfig": "apps/moderation/webpack.config.cjs",
+        "isolatedConfig": true
+      },
+      "configurations": {
+        "production": {
+          "optimization": false,
+          "extractLicenses": true,
+          "inspect": false,
+          "sourceMap": true
+        },
+        "development": {
+          "optimization": false,
+          "inspect": false,
+          "sourceMap": false
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "moderation:build"
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "moderation:build:production"
+        },
+        "development": {
+          "buildTarget": "moderation:build:development"
+        },
+        "local": {
+          "buildTarget": "moderation:build:development"
+        }
+      },
+      "defaultConfiguration": "local"
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["apps/moderation/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/apps/moderation"],
+      "options": {
+        "jestConfig": "apps/moderation/jest.config.ts",
+        "passWithNoTests": true
+      }
+    }
+  },
+  "tags": ["scope:moderation", "type:app", "platform:server"]
+}
