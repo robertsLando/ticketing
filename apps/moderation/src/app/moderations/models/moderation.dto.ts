@@ -44,8 +44,4 @@ export class ModerationDto extends Moderation {
   })
   declare moderatorId?: string;
 
-  @ApiProperty({
-    description: 'Moderation version',
-  })
-  declare version: number;
 }

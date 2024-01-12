@@ -26,7 +26,7 @@ export class OryPermissionGuard implements CanActivate {
 
     if (!factories?.length) {
       // no relation tuple ? - should not use this guard then => Forbidden
-      return Promise.resolve(false);
+      return false;
     }
     for (const { expression, relationTupleFactory } of factories) {
       const relationTuple = relationTupleFactory(context);
