@@ -36,7 +36,9 @@
     "serve": {
       "executor": "@nx/js:node",
       "options": {
-        "buildTarget": "moderation:build"
+        "buildTarget": "moderation:build",
+        "inspect": true,
+        "port": 9228
       },
       "configurations": {
         "production": {

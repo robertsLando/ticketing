@@ -1,6 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { firstValueFrom, map } from 'rxjs';
+import { catchError, firstValueFrom, map } from 'rxjs';
 
 import { ContentGuardModuleOptions } from './content-guard.interfaces';
 
@@ -105,7 +105,16 @@ export class ContentGuardService implements OnModuleInit {
             },
           }
         )
-        .pipe(map((response) => response.data.results[0]))
+        .pipe(
+          map((response) => {
+            return response.data.results[0];
+          }),
+          catchError((error) => {
+            // Handle the error here
+            console.error('An error occurred:', error);
+            throw error; // Rethrow the error to propagate it
+          })
+        )
     );
   }
 }

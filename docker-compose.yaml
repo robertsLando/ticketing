@@ -91,7 +91,7 @@ services:
       - 'dev'
     # for docker on linux
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - host.docker.internal:host-gateway
 
   # endregion
 
@@ -369,7 +369,7 @@ services:
       - 'dev'
     # for docker on linux
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - host.docker.internal:host-gateway
 
   # endregion
 
@@ -412,7 +412,7 @@ services:
       - 'dev'
     # for docker on linux
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - host.docker.internal:host-gateway
 
   kratos-postgres:
     image: postgres:16

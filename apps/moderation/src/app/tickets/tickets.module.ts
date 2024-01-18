@@ -11,7 +11,7 @@ import { getReplyQueueName } from '@ticketing/microservices/shared/rmq';
 import { Services } from '@ticketing/shared/constants';
 
 import { AppConfigService } from '../env';
-import { ModerationSchema } from '../moderation/schemas';
+import { ModerationSchema } from '../moderations/schemas';
 import { TicketSchema } from './schemas';
 import { TicketsService } from './tickets.service';
 import { TicketsMSController } from './tickets-ms.controller';
