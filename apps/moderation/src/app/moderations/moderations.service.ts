@@ -1,18 +1,20 @@
+import { OryError, OryRelationshipsService } from '@getlarge/keto-client-wrapper';
+import { createRelationQuery, relationTupleBuilder } from '@getlarge/keto-relations-parser';
 import { InjectQueue } from '@nestjs/bullmq';
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectModel } from '@nestjs/mongoose';
-import { OryPermissionsService } from '@ticketing/microservices/ory-client';
 import { PermissionNamespaces } from '@ticketing/microservices/shared/models';
 import { transactionManager } from '@ticketing/microservices/shared/mongo';
-import { RelationTuple } from '@ticketing/microservices/shared/relation-tuple-parser';
 import { Resources } from '@ticketing/shared/constants';
+import { AcceptableError, GenericError, RecoverableError, UnidentifiedError } from '@ticketing/shared/errors';
 import {
   Moderation,
   ModerationStatus,
   TicketStatus,
 } from '@ticketing/shared/models';
 import { Queue } from 'bullmq';
+import { MongoNetworkError, MongoServerClosedError } from 'mongodb'
 import { Model, Types } from 'mongoose';
 
 import {
@@ -38,8 +40,8 @@ export class ModerationsService {
     @InjectModel(ModerationSchema.name)
     private moderationModel: Model<ModerationDocument>,
     @Inject(EventEmitter2) private readonly eventEmitter: EventEmitter2,
-    @Inject(OryPermissionsService)
-    private readonly oryPermissionsService: OryPermissionsService,
+    @Inject(OryRelationshipsService)
+    private readonly oryRelationshipsService: OryRelationshipsService,
     @InjectQueue(QueueNames.MODERATE_TICKET)
     private readonly moderationProcessor: Queue<ModerateTicket>,
   ) {}
@@ -120,60 +122,92 @@ export class ModerationsService {
   async onTicketCreated(event: TicketCreatedEvent): Promise<void> {
     this.logger.log(`onTicketCreated ${JSON.stringify(event)}`);
     await using manager = await transactionManager(this.moderationModel);
-    await manager.wrap(async (session) => {
-      const existingModeration = await this.moderationModel.findOne({
-        'ticket.$id': event.ticket.id,
+
+    try {
+      await manager.wrap(async (session) => {
+        const existingModeration = await this.moderationModel
+          .findOne({
+            'ticket.$id': event.ticket.id,
+          })
+          .session(session);
+        if (existingModeration) {
+          // TODO: check whether moderation is pending,
+          throw new AcceptableError(
+            `Ticket moderation already exists - ${existingModeration.id}`,
+            HttpStatus.BAD_REQUEST,
+            TICKET_CREATED_EVENT,
+          );
+        }
+        const res = await this.moderationModel.create(
+          [
+            {
+              ticket: Types.ObjectId.createFromHexString(event.ticket.id),
+              status: ModerationStatus.Pending,
+            },
+          ],
+          { session },
+        );
+        await res[0].populate('ticket');
+        const moderation = res[0].toJSON<Moderation>();
+        this.logger.debug(`Created moderation ${moderation.id}`);
+
+        const relationTupleWithAdminGroup = relationTupleBuilder()
+          .subject(PermissionNamespaces[Resources.GROUPS], 'admin', 'members')
+          .isIn('editors')
+          .of(PermissionNamespaces[Resources.MODERATIONS], moderation.id)
+          .toJSON();
+        const createRelationshipBody = createRelationQuery(
+          relationTupleWithAdminGroup,
+        ).unwrapOrThrow();
+        await this.oryRelationshipsService.createRelationship({
+          createRelationshipBody,
+        });
+        this.logger.debug(
+          `Created relation ${relationTupleWithAdminGroup.toString()}`,
+        );
+
+        const job = await this.moderationProcessor.add(
+          'moderate-ticket',
+          { ticket: event.ticket, ctx: event.ctx, moderation },
+          {
+            attempts: 2,
+            delay: 1000,
+            jobId: moderation.id,
+            removeOnComplete: true,
+            removeOnFail: true,
+          },
+        );
+        this.logger.debug(`Created job ${job.id}`);
+        return moderation;
       });
-      if (existingModeration) {
-        // TODO: check whether moderation is pending,
-        throw new Error(
-          `Ticket moderation already exists - ${existingModeration.id}`,
+    } catch (e) {
+      if (e instanceof GenericError) {
+        throw e;
+      }
+      if (
+        e instanceof MongoNetworkError ||
+        e instanceof MongoServerClosedError
+      ) {
+        throw new RecoverableError(
+          e.message,
+          HttpStatus.SERVICE_UNAVAILABLE,
+          TICKET_CREATED_EVENT,
         );
       }
-      const res = await this.moderationModel.create(
-        [
-          {
-            ticket: Types.ObjectId.createFromHexString(event.ticket.id),
-            status: ModerationStatus.Pending,
-          },
-        ],
-        { session },
+      if (e instanceof OryError) {
+        this.logger.error(e.getDetails());
+        throw new AcceptableError(
+          `Could not create relation`,
+          HttpStatus.BAD_REQUEST,
+          TICKET_CREATED_EVENT,
+        );
+      }
+      throw new UnidentifiedError(
+        e.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        TICKET_CREATED_EVENT,
       );
-      await res[0].populate('ticket');
-      const moderation = res[0].toJSON<Moderation>();
-      this.logger.debug(`Created moderation ${moderation.id}`);
-
-      const relationTupleWithAdminGroup = new RelationTuple(
-        PermissionNamespaces[Resources.MODERATIONS],
-        moderation.id,
-        'editors',
-        {
-          namespace: PermissionNamespaces[Resources.GROUPS],
-          object: 'admin',
-          relation: 'members',
-        },
-      );
-      await this.oryPermissionsService.createRelation(
-        relationTupleWithAdminGroup,
-      );
-      this.logger.debug(
-        `Created relation ${relationTupleWithAdminGroup.toString()}`,
-      );
-
-      const job = await this.moderationProcessor.add(
-        'moderate-ticket',
-        { ticket: event.ticket, ctx: event.ctx, moderation },
-        {
-          attempts: 2,
-          delay: 1000,
-          jobId: moderation.id,
-          removeOnComplete: true,
-          removeOnFail: true,
-        },
-      );
-      this.logger.debug(`Created job ${job.id}`);
-      return moderation;
-    });
+    }
   }
 
   @OnEvent(TICKET_APPROVED_EVENT, {

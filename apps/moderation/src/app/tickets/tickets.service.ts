@@ -1,9 +1,11 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { ClientProxy } from '@nestjs/microservices';
 import { InjectModel } from '@nestjs/mongoose';
 import { EventsMap, Patterns } from '@ticketing/microservices/shared/events';
-import { Ticket, TicketStatus } from '@ticketing/shared/models';
+import { AcceptableError, RecoverableError } from '@ticketing/shared/errors';
+import { ModerationTicket, Ticket, TicketStatus } from '@ticketing/shared/models';
+import { MongoNetworkError, MongoServerClosedError } from 'mongodb';
 import type { Model } from 'mongoose';
 import { firstValueFrom, lastValueFrom, Observable, timeout, zip } from 'rxjs';
 
@@ -15,7 +17,7 @@ import {
   TICKET_CREATED_EVENT,
   TICKET_REJECTED_EVENT,
 } from '../shared/events';
-import { Ticket as TicketSchema, TicketDocument } from './schemas';
+import { Ticket as TicketSchema,TicketDocument } from './schemas';
 
 type TicketWithStatus<S extends TicketStatus> = Omit<Ticket, 'status'> & {
   status: S;
@@ -32,19 +34,50 @@ export class TicketsService {
     @Inject('ORDERS_CLIENT') private ordersClient: ClientProxy
   ) {}
 
-  async create(body: Ticket): Promise<void> {
-    const ticket = await this.ticketModel.create({
-      ...body,
-      _id: body.id,
-    });
+  async create(body: Ticket): Promise<ModerationTicket> {
+    const ticket = await this.ticketModel
+      .create({
+        ...body,
+        _id: body.id,
+      })
+      .catch((err) => {
+        if (
+          err instanceof MongoNetworkError ||
+          err instanceof MongoServerClosedError
+        ) {
+          throw new RecoverableError(
+            err.message,
+            HttpStatus.SERVICE_UNAVAILABLE,
+            Patterns.TicketCreated
+          );
+        }
+        throw new AcceptableError(
+          err.message,
+          HttpStatus.BAD_REQUEST,
+          Patterns.TicketCreated
+        );
+      });
     const event: InternalTicketCreatedEvent = {
       ticket: ticket.toJSON(),
       ctx: {},
     };
     try {
       await this.eventEmitter.emitAsync(TICKET_CREATED_EVENT, event);
+      return ticket.toJSON<ModerationTicket>({});
     } catch (e) {
-      await this.ticketModel.deleteOne({ _id: ticket.id });
+      await this.ticketModel.deleteOne({ _id: ticket.id }).catch((err) => {
+        if (
+          err instanceof MongoNetworkError ||
+          err instanceof MongoServerClosedError
+        ) {
+          throw new RecoverableError(
+            err.message,
+            HttpStatus.SERVICE_UNAVAILABLE,
+            Patterns.TicketCreated
+          );
+        }
+        throw err;
+      });
       throw e;
     }
   }

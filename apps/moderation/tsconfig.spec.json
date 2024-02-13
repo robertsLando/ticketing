@@ -2,7 +2,6 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "../../dist/out-tsc",
-    "moduleResolution": "node",
     "module": "esnext",
     "target": "es2022",
     "emitDecoratorMetadata": true,
@@ -10,7 +9,7 @@
     "allowJs": true
   },
   "include": [
-    "**/*.e2e-spec.ts",
+    "**/*.ts",
     "**/*.mock.ts",
     "**/*.spec.ts",
     "**/*.d.ts",

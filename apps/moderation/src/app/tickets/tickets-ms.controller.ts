@@ -1,4 +1,4 @@
-import { Controller, Inject, Logger, ValidationPipe } from '@nestjs/common';
+import { Controller, Inject, Logger, UseFilters, ValidationPipe } from '@nestjs/common';
 import {
   Ctx,
   MessagePattern,
@@ -12,9 +12,11 @@ import { requestValidationErrorFactory } from '@ticketing/shared/errors';
 import type { Channel } from 'amqp-connection-manager';
 import type { Message } from 'amqplib';
 
+import { GenericExceptionFilter } from '../filters/exception.filter';
 import { TicketsService } from './tickets.service';
 
 @Controller()
+@UseFilters(GenericExceptionFilter)
 export class TicketsMSController {
   readonly logger = new Logger(TicketsMSController.name);
 
