@@ -47,7 +47,9 @@
           "buildTarget": "tickets:build:development"
         },
         "local": {
-          "buildTarget": "tickets:build:development"
+          "buildTarget": "tickets:build:development",
+          "inspect": true,
+          "port": 9224
         }
       },
       "defaultConfiguration": "local"
@@ -56,7 +58,11 @@
       "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
-        "lintFilePatterns": ["apps/tickets/**/*.ts"]
+        "lintFilePatterns": [
+          "apps/tickets/**/*.ts",
+          "apps/tickets/**/package.json",
+          "apps/tickets/**/project.json"
+        ]
       }
     },
     "test": {
@@ -64,8 +70,8 @@
       "outputs": ["{workspaceRoot}/coverage/apps/tickets"],
       "options": {
         "jestConfig": "apps/tickets/jest.config.ts",
-        "passWithNoTests": true,
-        "codeCoverage": true
+        "codeCoverage": true,
+        "detectOpenHandles": true
       }
     },
     "e2e": {
@@ -73,7 +79,6 @@
       "outputs": ["{workspaceRoot}/coverage/apps/tickets-e2e"],
       "options": {
         "jestConfig": "apps/tickets/jest-e2e.config.ts",
-        "passWithNoTests": true,
         "codeCoverage": true,
         "detectOpenHandles": true
       }

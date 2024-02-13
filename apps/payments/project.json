@@ -46,7 +46,9 @@
           "buildTarget": "payments:build:development"
         },
         "local": {
-          "buildTarget": "payments:build:development"
+          "buildTarget": "payments:build:development",
+          "inspect": true,
+          "port": 9223
         }
       },
       "defaultConfiguration": "local"
@@ -55,7 +57,11 @@
       "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
-        "lintFilePatterns": ["apps/payments/**/*.ts"]
+        "lintFilePatterns": [
+          "apps/payments/**/*.ts",
+          "apps/payments/**/package.json",
+          "apps/payments/**/project.json"
+        ]
       }
     },
     "test": {

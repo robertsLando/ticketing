@@ -1,7 +1,7 @@
 const { config, parse } = require('dotenv');
 const { expand } = require('dotenv-expand');
-const { existsSync, readFileSync } = require('fs');
-const { resolve } = require('path');
+const { existsSync, readFileSync } = require('node:fs');
+const { resolve } = require('node:path');
 const { connect } = require('mongoose');
 
 const createTestConnection = (envFilePath = '.env.test') => {

@@ -18,9 +18,6 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@ticketing/microservices/ory-client": [
-        "libs/microservices/ory-client/src/index.ts"
-      ],
       "@ticketing/microservices/shared/constants": [
         "libs/microservices/shared/constants/src/index.ts"
       ],
@@ -32,6 +29,9 @@
       ],
       "@ticketing/microservices/shared/events": [
         "libs/microservices/shared/events/src/index.ts"
+      ],
+      "@ticketing/microservices/shared/fastify-multipart": [
+        "libs/microservices/shared/fastify-multipart/src/index.ts"
       ],
       "@ticketing/microservices/shared/fastify-passport": [
         "libs/microservices/shared/fastify-passport/src/index.ts"
@@ -53,9 +53,6 @@
       ],
       "@ticketing/microservices/shared/redis": [
         "libs/microservices/shared/redis/src/index.ts"
-      ],
-      "@ticketing/microservices/shared/relation-tuple-parser": [
-        "libs/microservices/shared/relation-tuple-parser/src/index.ts"
       ],
       "@ticketing/microservices/shared/rmq": [
         "libs/microservices/shared/rmq/src/index.ts"

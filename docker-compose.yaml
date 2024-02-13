@@ -1,4 +1,4 @@
-version: '2.7'
+version: '3.2'
 
 networks:
   mongo:
@@ -376,12 +376,8 @@ services:
   # region Ory Kratos
   kratos-migrate:
     image: oryd/kratos:v1.0.0
-    environment:
-      - DSN=postgres://dbuser:secret@kratos-postgres:5432/kratosdb?sslmode=disable
     volumes:
-      - type: bind
-        source: ./infra/ory/kratos
-        target: /etc/config/kratos
+      - ./infra/ory/kratos:/etc/config/kratos:ro
     command: -c /etc/config/kratos/kratos.yaml migrate sql -e --yes
     restart: on-failure
     networks:
@@ -398,13 +394,9 @@ services:
       - '4433:4433' # public
       - '4434:4434' # admin
     restart: unless-stopped
-    environment:
-      - DSN=postgres://dbuser:secret@kratos-postgres:5432/kratosdb?sslmode=disable
     command: serve -c /etc/config/kratos/kratos.yaml --dev --watch-courier
     volumes:
-      - type: bind
-        source: ./infra/ory/kratos
-        target: /etc/config/kratos
+      - ./infra/ory/kratos:/etc/config/kratos:ro
     networks:
       - ory
     profiles:
@@ -457,17 +449,11 @@ services:
 
   # region Ory Keto
   keto-migrate:
-    image: oryd/keto:v0.11.1
+    image: oryd/keto:v0.12.0
     volumes:
-      - type: bind
-        source: ./infra/ory/keto
-        target: /home/ory
-      - type: bind
-        source: ./tools/ory/namespaces.ts
-        target: /home/ory/namespaces.ts
-    environment:
-      - DSN=postgres://dbuser:secret@keto-postgres:5432/accesscontroldb?sslmode=disable
-    command: ['migrate', 'up', '-y', '-c', '/home/ory/keto.yaml']
+      - ./infra/ory/keto:/etc/config/keto:ro
+      - ./tools/ory/namespaces.ts:/home/ory/namespaces.ts
+    command: ['migrate', 'up', '-y', '-c', '/etc/config/keto/keto.yaml']
     restart: on-failure
     networks:
       - ory
@@ -478,21 +464,15 @@ services:
   keto:
     depends_on:
       - keto-migrate
-    image: oryd/keto:v0.11.1
+    image: oryd/keto:v0.12.0
     ports:
       - '4466:4466' # public
       - '4467:4467' # admin
-    command: serve -c /home/ory/keto.yaml
+    command: serve -c /etc/config/keto/keto.yaml
     restart: on-failure
-    environment:
-      - DSN=postgres://dbuser:secret@keto-postgres:5432/accesscontroldb?sslmode=disable
     volumes:
-      - type: bind
-        source: ./infra/ory/keto
-        target: /home/ory
-      - type: bind
-        source: ./tools/ory/namespaces.ts
-        target: /home/ory/namespaces.ts
+      - ./infra/ory/keto:/etc/config/keto:ro
+      - ./tools/ory/namespaces.ts:/home/ory/namespaces.ts
     networks:
       - ory
     profiles:
@@ -512,26 +492,5 @@ services:
     profiles:
       - 'ory-only'
       - 'dev'
-
-  # endregion
-
-  # region Ory Oathkeeper
-
-  # oathkeeper:
-  #   image: oryd/oathkeeper:v0.40
-  #   depends_on:
-  #     - kratos
-  #   ports:
-  #     - 4455:4455
-  #     - 4456:4456
-  #   command: serve proxy -c "/etc/config/oathkeeper/oathkeeper.yaml"
-  #   restart: on-failure
-  #   networks:
-  #     - ory
-  #   volumes:
-  #     - ./infra/ory/oathkeeper:/etc/config/oathkeeper
-  #   profiles:
-  #     - 'ory-only'
-  #     - 'dev'
 
   # endregion
